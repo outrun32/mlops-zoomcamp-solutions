@@ -42,13 +42,15 @@ def run_optimization(data_path: str, num_trials: int):
             'random_state': 42,
             'n_jobs': -1
         }
+        with mlflow.start_run():
+            rf = RandomForestRegressor(**params)
+            rf.fit(X_train, y_train)
+            y_pred = rf.predict(X_val)
+            rmse = mean_squared_error(y_val, y_pred, squared=False)
+            mlflow.log_params(params)
+            mlflow.log_metric("rmse", rmse)
 
-        rf = RandomForestRegressor(**params)
-        rf.fit(X_train, y_train)
-        y_pred = rf.predict(X_val)
-        rmse = mean_squared_error(y_val, y_pred, squared=False)
-
-        return rmse
+            return rmse
 
     sampler = TPESampler(seed=42)
     study = optuna.create_study(direction="minimize", sampler=sampler)
