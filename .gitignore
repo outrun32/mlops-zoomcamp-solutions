@@ -18,6 +18,7 @@ __pycache__/
 **.terraform/
 **.terraform.lock*
 **terraform.tfstate*
-
-
+output/
+wandb/
+*.pkl
 .DS_Store
