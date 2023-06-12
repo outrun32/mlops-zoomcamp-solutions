@@ -8,9 +8,10 @@ from sklearn.feature_extraction import DictVectorizer
 from sklearn.metrics import mean_squared_error
 import mlflow
 import xgboost as xgb
+from datetime import date
 from prefect import flow, task
-from prefect.deployments import Deployment
-
+from prefect.artifacts import create_markdown_artifact
+from prefect_email import EmailServerCredentials, email_send_message
 
 @task(retries=3, retry_delay_seconds=2, name="Read taxi data")
 def read_data(filename: str) -> pd.DataFrame:
@@ -107,6 +108,25 @@ def train_best_model(
         mlflow.log_artifact("models/preprocessor.b", artifact_path="preprocessor")
 
         mlflow.xgboost.log_model(booster, artifact_path="models_mlflow")
+
+        print(rmse)
+
+        markdown__rmse_report = f"""# RMSE Report
+
+        ## Summary
+
+        Duration Prediction 
+
+        ## RMSE XGBoost Model
+
+        | Region    | RMSE |
+        |:----------|-------:|
+        | {date.today()} | {rmse:.2f} |
+        """
+
+        create_markdown_artifact(
+            key="duration-model-report", markdown=markdown__rmse_report
+        )
     return None
 
 
@@ -130,6 +150,15 @@ def main_flow(
 
     # Train
     train_best_model(X_train, X_val, y_train, y_val, dv)
+
+    #
+    email_credentials_block = EmailServerCredentials.load("email-auth")
+    subject = email_send_message.with_options(name=f"email to me").submit(
+            email_server_credentials=email_credentials_block,
+            subject="Flow run has been executed sucessfully!",
+            msg="Check it on dashboard",
+            email_to="jakovsap@gmail.com",
+        )
 
 
 if __name__ == "__main__":
